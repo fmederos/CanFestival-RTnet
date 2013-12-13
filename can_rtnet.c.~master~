@@ -78,6 +78,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "can_driver.h"
 
 #include "rtcan.h"
+// Se agregan los include de rtcan.h
+
+#ifdef __KERNEL__
+	#include <linux/net.h>
+	#include <linux/socket.h>
+	#include <linux/if.h>
+#else /* !__KERNEL__ */
+	#include <net/if.h>
+#endif /* !__KERNEL__ */
 
 #include <rtdm/rtdm.h>
 
