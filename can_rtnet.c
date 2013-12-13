@@ -1,7 +1,7 @@
 /*
 This file is part of CanFestival, a library implementing CanOpen Stack.
 
-Copyright (C): Edouard TISSERANT and Francis DUPIN
+Copyright (C): Fernando Mederos and Daniel Garcia Carreras
 
 See COPYING file for copyrights details.
 
