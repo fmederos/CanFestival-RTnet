@@ -76,11 +76,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #endif
 
 #include "can_driver.h"
-
 #include "rtcan.h"
-
 #include <rtdm/rtdm.h>
-
 #include "can_rtnet.h"
 
 static unsigned char buffer[64];
