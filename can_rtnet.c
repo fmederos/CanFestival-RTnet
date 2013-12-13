@@ -33,6 +33,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <arpa/inet.h>
 
 #include "config.h"
+#include "can_driver.h"
+#include "rtcan.h"
+#include <rtdm/rtdm.h>
+#include "can_rtnet.h"
 
 // mensajes de depuración... comentar para desactivar
 #define	DEBUG_MSG_CONSOLE_ON
@@ -75,10 +79,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	#define CAN_SETSOCKOPT setsockopt
 #endif
 
-#include "can_driver.h"
-#include "rtcan.h"
-#include <rtdm/rtdm.h>
-#include "can_rtnet.h"
 
 static unsigned char buffer[64];
 // TODO : llenar este array con la shost del interfaz
