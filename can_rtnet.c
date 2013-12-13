@@ -31,12 +31,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <net/if.h>
 #include <arpa/inet.h>
 
-
 // mensajes de depuración... comentar para desactivar
 #define	DEBUG_MSG_CONSOLE_ON
 
 #ifdef RTCAN_SOCKET
-	#include </usr/rtnet/include/rtnet.h>
 	#include <native/task.h>
 	#include <linux/kernel.h>
 	#include <linux/net.h>
@@ -55,7 +53,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 	#include <unistd.h>
 	#include <sys/socket.h>
 	#include <sys/ioctl.h>
-	#include <net/if.h>
 	#ifndef PF_CAN
 	#define PF_CAN 29
 	#endif
@@ -141,8 +138,8 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
 	struct can_frame *frame=((struct can_frame *)buffer)+ETH_HLEN;
 
 	//El frame va a ser el data payload del paquete, por tanto hay que ubicarlo luego del offset del head ethernet
-    for(i = 0 ;i <= ETH_HLEN ; i++)
-    buffer[i]=buffer_header[i];
+    for(i = 0 ; i <= ETH_HLEN ; i++)
+      buffer[i]=buffer_header[i];
 
 	// armamos trama en formato CANopenRTnet a partir de tipo message de CANfestival
 	(*frame).can_id = m->cob_id;
@@ -161,8 +158,6 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
 	MSG("out : ");
 	print_message(m);
 #endif
-    //
-    
 	res = CAN_SEND(sock, buffer, sizeof(buffer), 0);
 	//res = CAN_SEND (sock, &frame, sizeof (frame), 0);
 	if (res < 0)
@@ -261,7 +256,7 @@ canOpen_driver (s_BOARD *board)
 
 	// armamos socket link-layer para asignar puerto y protocolo al interfaz
 	addr.sll_family   = PF_PACKET;//AF_PACKET;
-	addr.sll_protocol = htons(PROTO_CANOpenRTnet);
+	addr.sll_protocol = htons(PROTO_CANopenRTnet);
 	addr.sll_ifindex  = ifr.ifr_ifindex;
 
 	if (CAN_BIND(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -297,4 +292,3 @@ int canClose_driver (CAN_HANDLE fd0)
 	}
 	return 0;
 }
-
