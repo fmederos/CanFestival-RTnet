@@ -80,6 +80,25 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // prototipo de cabecera ethernet
 static unsigned char buffer_header[14];
 
+
+#define SWAP(a, b, t)   ((t) = (a), (a) = (b), (b) = (t))
+
+void byterev(unsigned char *val, int size)
+{
+  int t;
+         
+  switch (size) {
+  case 2:
+    SWAP(val[0], val[1], t);
+    break;
+  case 4:
+    SWAP(val[0], val[3], t);
+    SWAP(val[1], val[2], t);
+    break;
+  }
+}
+
+
 /*********functions which permit to communicate with the board****************/
 UNS8
 canReceive_driver (CAN_HANDLE fd0, Message * m)
@@ -135,21 +154,51 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
   int res;
   int sock;
   unsigned char buffer[64];
-  struct can_frame *frame=((struct can_frame *)buffer)+ETH_HLEN;
 
-  //El frame va a ser el data payload del paquete, por tanto hay que ubicarlo luego del offset del head ethernet
+  //frame va a ser payload del paquete, hay que ubicarlo luego del header ethernet
+  struct can_frame *frame = (struct can_frame *)(ETH_HLEN+(void *)buffer);
+
+  // inicializamos buffer en 0
+  memset(buffer,0x00,64);
+
+  // copiamos header prototipo al principio de la trama
   for(i = 0 ; i <= ETH_HLEN ; i++)
     buffer[i]=buffer_header[i];
 
   // armamos trama en formato CANopenRTnet a partir de tipo message de CANfestival
+  // pasamos el COB-id
   (*frame).can_id = m->cob_id;
-  if ( (*frame).can_id >= 0x800)
-    (*frame).can_id |=  CAN_EFF_FLAG;
+  // ponemos flag EFF
+  if ( m->cob_id >= 0x800)
+    (*frame).can_id |= CAN_EFF_FLAG;
+  // ponemos dlc
   (*frame).can_dlc = m->len;
+  // ponemos flag RTR o datos
   if (m->rtr)
+    // Si es solicitud de respuesta no lleva datos
     (*frame).can_id |= CAN_RTR_FLAG;
   else
-    memcpy ( (*frame).data, m->data, 8);
+    // Si NO es solicitud de respuesta entonces SI lleva datos...
+    memcpy ((*frame).data, m->data, m->len);
+
+// Tener en cuenta alineación de campo data[] de can_frame.
+// rtcan.h define el campo con alineación a 8 bytes, esto agrega 3 bytes sin
+// utilizar en la trama, eliminando el atributo de alineación se evita esto:
+//	uint8_t data[8] __attribute__ ((aligned(8)));
+//	uint8_t data[8];
+
+
+  // el orden de los bytes en la trama debe ser little-endian, esta arquitectura escribe en big-endian...
+  // hay que invertir orden
+  byterev((unsigned char *)&((*frame).can_id),4);
+
+//TODO
+   printf("M COBID: %x\n", m->cob_id);
+ 	//printf("Frame CANID: %x\n", (*frame).can_id);
+
+//TODO
+	//printf("M DATA: %x\n", m->data);
+ 	//printf("Frame DATA: %x\n", (*frame).data);
 
   // convertimos CAN_HANDLE a socket
   sock = (int)fd0 -1;
@@ -158,7 +207,13 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
   MSG("out : ");
   print_message(m);
 #endif
-  res = CAN_SEND(sock, buffer, sizeof(buffer), 0);
+//TODO
+	printf("Buffer");
+    for(i = 0 ; i <= 64 ; i++)
+    printf(":%2.2x", buffer[i]);
+	printf("\n");
+
+ res = CAN_SEND(sock, &buffer, sizeof(buffer), 0);
   //res = CAN_SEND (sock, &frame, sizeof (frame), 0);
   if (res < 0){
     fprintf (stderr, "Send failed: %s\n", strerror (CAN_ERRNO (res)));
