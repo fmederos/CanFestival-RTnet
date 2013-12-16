@@ -103,9 +103,12 @@ void byterev(unsigned char *val, int size)
 UNS8
 canReceive_driver (CAN_HANDLE fd0, Message * m)
 {
-    int res;
-    int sock;
-    struct can_frame frame;
+	int res;
+	int sock;
+	int i;
+	unsigned char buffer[64];
+	//can_frame es payload del paquete ethernet, viene luego del header ethernet
+	struct can_frame *frame = (struct can_frame *)(ETH_HLEN+(void *)buffer);
 
     // convertimos de CAN_HANDLE a socket
     // CAN_HANDLE = socket+1
@@ -116,30 +119,37 @@ canReceive_driver (CAN_HANDLE fd0, Message * m)
     printf("Socket: %d\n", sock);
 #endif
     // esta función bloquea hasta recibir una trama
-    res = CAN_RECV (sock, &frame, sizeof (frame), 0);
+	// flags: MSG_PEEK, MSG_DONTWAIT
+    res = CAN_RECV (sock, buffer, sizeof(buffer), 0);
     if (res < 0)
     {
       fprintf (stderr, "Recv failed: %s\n", strerror (CAN_ERRNO (res)));
       return 1;
     }
 
-    // TODO: interpretar frame de acuerdo al formato CANopenRTnet (can_rtnet.h)
-    // TODO: diferenciar caso extended COB-id (señalizado por segundo MSb de can_id_ext_h)
-    // armamos estructura message para CANfestival con los datos recibidos
-    m->cob_id = frame.can_id & CAN_EFF_MASK;
-    m->len = frame.can_dlc;
-    if (frame.can_id & CAN_RTR_FLAG)
+	// la trama ethernet usa almacenamiento little-endian, hay que invertir
+	byterev((unsigned char *)&((*frame).can_id) , 4);
+
+    m->cob_id = (*frame).can_id & CAN_EFF_MASK;
+    m->len = (*frame).can_dlc;
+    if ((*frame).can_id & CAN_RTR_FLAG)
       m->rtr = 1;
     else
       m->rtr = 0;
-    memcpy (m->data, frame.data, 8);
+    memcpy (m->data, (*frame).data, m->len);
 
 #if defined DEBUG_MSG_CONSOLE_ON
-    printf("Recibido!!\n");
-    printf("Socket: %d\n", sock);
+	printf("Recibidos %d bytes!\n",res);
+	printf("Socket: %d\n", sock);
+	printf("COB-id:%4.4x\n" , m->cob_id);
+	printf("Len:%2.2x\n" , m->len);
+	printf("Data");
+	for(i = 0 ; i < m->len ; i++)
+		printf(":%2.2x", m->data[i]);
+	printf("\n");
 
-    MSG("in : ");
-    print_message(m);
+//    MSG("in : ");
+//    print_message(m);
 #endif
 
     return 0;
@@ -162,7 +172,7 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
   memset(buffer,0x00,64);
 
   // copiamos header prototipo al principio de la trama
-  for(i = 0 ; i <= ETH_HLEN ; i++)
+  for(i = 0 ; i < ETH_HLEN ; i++)
     buffer[i]=buffer_header[i];
 
   // armamos trama en formato CANopenRTnet a partir de tipo message de CANfestival
@@ -189,31 +199,33 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
 
 
   // el orden de los bytes en la trama debe ser little-endian, esta arquitectura escribe en big-endian...
-  // hay que invertir orden
+  // hay que invertir orden del campo cob-id, el dlc no porque es 1 solo byte
   byterev((unsigned char *)&((*frame).can_id),4);
 
+  // convertimos CAN_HANDLE a socket
+  sock = (int)fd0 -1;
+
+#if defined DEBUG_MSG_CONSOLE_ON
 //TODO
-   printf("M COBID: %x\n", m->cob_id);
+   printf("COBID: %x\n", m->cob_id);
  	//printf("Frame CANID: %x\n", (*frame).can_id);
 
 //TODO
 	//printf("M DATA: %x\n", m->data);
  	//printf("Frame DATA: %x\n", (*frame).data);
 
-  // convertimos CAN_HANDLE a socket
-  sock = (int)fd0 -1;
+	//MSG("out : ");
+	//print_message(m);
 
-#if defined DEBUG_MSG_CONSOLE_ON
-  MSG("out : ");
-  print_message(m);
-#endif
-//TODO
 	printf("Buffer");
-    for(i = 0 ; i <= 64 ; i++)
-    printf(":%2.2x", buffer[i]);
+	for(i = 0 ; i < 64 ; i++)
+		printf(":%2.2x", buffer[i]);
 	printf("\n");
 
- res = CAN_SEND(sock, &buffer, sizeof(buffer), 0);
+	printf("Socket: %d\n", sock);
+#endif
+
+  res = CAN_SEND(sock, buffer, sizeof(buffer), 0);
   //res = CAN_SEND (sock, &frame, sizeof (frame), 0);
   if (res < 0){
     fprintf (stderr, "Send failed: %s\n", strerror (CAN_ERRNO (res)));
@@ -222,7 +234,6 @@ canSend_driver (CAN_HANDLE fd0, Message const *m)
 
 #if defined DEBUG_MSG_CONSOLE_ON
   printf("Trasmitió: %i bytes\n", res);
-  printf("Socket: %d\n", sock);
 #endif
 
   return 0;
@@ -290,7 +301,7 @@ canOpen_driver (s_BOARD *board)
   }
  
   //se copia MAC obtenida al prototipo de header ethernet (que apunta a buffer_header)
-  for (i = 0 ; i <= ETH_ALEN ; i++)
+  for (i = 0 ; i < ETH_ALEN ; i++)
     eth->ether_shost[i]=(unsigned char)ifr.ifr_hwaddr.sa_data[i];
 
   if (CAN_IOCTL(sock, SIOCGIFINDEX, &ifr) < 0) {
