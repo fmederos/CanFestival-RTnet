@@ -1,0 +1,21 @@
+Driver RTnet para CanFestival
+-----------------------------
+
+Estas fuentes deberán ser estar en subdirectorio 'drivers' de CanFestival para compilar.
+Este driver requiere RTnet en funcionamiento.
+
+------------------------------------------
+¡¡¡Atención para una instalacion nueva:!!!
+------------------------------------------
+
+Para el correcto funcionamiento del canSend_driver hay que tener en cuenta la alineación de campo data[] del can_frame.
+En el rtcan.h  se define el campo con alineación a 8 bytes, esto agrega 3 bytes, que se llenan en "000000" al ser armada
+la trama. Eliminando el atributo de alineación en rtcan.h se evita esto:
+Buscar la línea:
+	uint8_t data[8] __attribute__ ((aligned(8)));
+Sustituir por:
+	uint8_t data[8];
+
+Luego recompilar el can_rtnet.c.
+
+Nota: Si su aplicación usa el libcanfestival_can_rtnet.so, conviene re-compilar, a no ser que haga un link dinámico.

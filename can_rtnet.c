@@ -1,5 +1,5 @@
 /*
-This file is part of CanFestival, a library implementing CanOpen Stack.
+This file is part of CanFestival, a library implementing CanOpen Stack over RTnet Ethernet tansport.
 
 Copyright (C): Fernando Mederos and Daniel Garcia Carreras
 
@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <arpa/inet.h>
 
 // mensajes de depuración... comentar para desactivar
-#define	DEBUG_MSG_CONSOLE_ON
+//#define	DEBUG_MSG_CONSOLE_ON
 
 #ifdef RTCAN_SOCKET
 	#include <native/task.h>
